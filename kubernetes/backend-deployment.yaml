@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekado-backend
+  namespace: tekado
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tekado-backend
+  template:
+    metadata:
+      labels:
+        app: tekado-backend
+    spec:
+      containers:
+        - name: backend
+          image: robinyaghi/tekado-backend:latest   # image built by your CI/CD
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: tekado-config
+                  key: APP_PORT
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+
