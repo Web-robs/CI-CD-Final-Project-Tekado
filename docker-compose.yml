@@ -1,0 +1,45 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tekado-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tekado_user
+      POSTGRES_PASSWORD: tekado_pass
+      POSTGRES_DB: tekado_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - tekado-net  #backend and db can talk
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tekado_user -d tekado_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tekado-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://tekado_user:tekado_pass@db:5432/tekado_db?schema=public
+      NODE_ENV: production
+      PORT: 8000
+      # add here any other env vars your app needs (JWT_SECRET, SMTP, etc.)
+    ports:
+      - "8000:8000"  #to reach the API from your machine.
+    networks:
+      - tekado-net
+
+volumes:
+  db-data:
+
+networks:
+  tekado-net:

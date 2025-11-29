@@ -1,0 +1,27 @@
+# Node dependencies
+node_modules
+npm-debug.log
+yarn.lock
+pnpm-lock.yaml
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+dist
+build
+
+# Docker stuff
+Dockerfile
+docker-compose.yml
+
+# Git & editor
+.git
+.gitignore
+.vscode
+.idea
+*.swp
+*.swo
+

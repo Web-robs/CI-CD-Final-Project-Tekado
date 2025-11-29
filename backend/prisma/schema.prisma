@@ -1,0 +1,86 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String
+  price       Decimal  @default(0)
+  category    String
+  image       String
+  brand       String?
+  stock       Int      @default(0)
+  rating      Float    @default(0)
+  numReviews  Int      @default(0)
+  createdAt   DateTime @default(now())
+  weaviateId  String?  @unique
+  pineconeId  String?  @unique
+
+  OrderItem OrderItem[]
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  emailVerified Boolean   @default(false)
+  verificationCode String?
+  verificationCodeExpiresAt DateTime?
+  verifiedAt DateTime?
+  createdAt DateTime @default(now())
+
+  orders Order[]
+}
+
+// Run:
+// cd backend
+// npx prisma migrate dev --name add_email_verification_code
+// npx prisma generate
+
+model Order {
+  id               Int                  @id @default(autoincrement())
+  orderNumber      String               @unique
+  email            String
+  name             String
+  shippingAddress  String
+  total            Decimal              @default(0)
+  statusIndex      Int                  @default(0)
+  estimatedDelivery DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  userId Int? 
+  user   User?                 @relation(fields: [userId], references: [id])
+
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   Int
+  product   Product? @relation(fields: [productId], references: [id])
+  productId Int?
+  name      String
+  price     Decimal
+  quantity  Int
+  image     String?
+}
+
+model OrderStatusHistory {
+  id          Int      @id @default(autoincrement())
+  order       Order    @relation(fields: [orderId], references: [id])
+  orderId     Int
+  code        String
+  label       String
+  description String
+  enteredAt   DateTime @default(now())
+}

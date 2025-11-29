@@ -1,0 +1,32 @@
+# 1) Use a lightweight Node.js base image
+FROM node:20-alpine
+
+# 2) Set working directory inside the container
+WORKDIR /app
+
+# 3) Install required OS packages (Prisma often needs openssl)
+RUN apk add --no-cache openssl
+
+# 4) Copy only package files + prisma for better layer caching
+COPY package*.json ./
+COPY prisma ./prisma
+
+# 5) Install dependencies (production only)
+# If you don't have package-lock.json, change to: RUN npm install --omit=dev
+RUN npm ci --omit=dev
+
+# 6) Copy the rest of the application source code
+COPY . .
+
+# 7) Generate Prisma client
+RUN npx prisma generate
+
+# 8) Set environment (production mode inside container)
+ENV NODE_ENV=production
+
+# 9) Expose the port your app listens on (change 3000 if needed)
+EXPOSE 3000
+
+# 10) Start the app (adapt to your start script)
+CMD ["npm", "start"]
+
