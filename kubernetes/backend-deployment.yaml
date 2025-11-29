@@ -12,10 +12,14 @@ spec:
     metadata:
       labels:
         app: tekado-backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
     spec:
       containers:
         - name: backend
-          image: robinyaghi/tekado-backend:latest   # image built by your CI/CD
+          image: robinyaghi/tekado-backend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -42,4 +46,3 @@ spec:
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 20
-

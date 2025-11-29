@@ -3,6 +3,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
 const cors = require('cors');
+const client = require('prom-client');
 const seedDB = require('./seed/productSeeds');
 const syncPinecone = require('./sync/syncPinecone');
 const productRoutes = require('./routes/products');
@@ -20,6 +21,27 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// ---- Prometheus metrics setup ----
+const register = new client.Registry();
+
+// collect default Node.js + process metrics (CPU, memory, event loop, etc.)
+client.collectDefaultMetrics({ register });
+
+// Optional: simple HTTP request counter
+const httpRequestCounter = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status'],
+  registers: [register],
+});
+
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    httpRequestCounter.labels(req.method, req.path, res.statusCode).inc();
+  });
+  next();
+});
+
 // Simple healthcheck endpoint for Kubernetes probes
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
@@ -28,6 +50,16 @@ app.get('/health', (req, res) => {
 // Redirect root to /api-docs
 app.get('/', (req, res) => {
   res.redirect('/api-docs');
+});
+
+// Expose /metrics endpoint for Prometheus
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err.toString());
+  }
 });
 
 // Setup Swagger UI with customized title
