@@ -1,18 +1,24 @@
 const swaggerJSDoc = require('swagger-jsdoc');
 
+const contactEmail = process.env.SWAGGER_CONTACT_EMAIL || 'support@tekado.cloud';
+const contactUrl = process.env.SWAGGER_CONTACT_URL || 'https://tekado.cloud';
+const termsOfServiceUrl = process.env.SWAGGER_TOS_URL || 'https://tekado.cloud';
+const primaryServerUrl = process.env.PUBLIC_API_URL || 'http://localhost:8000';
+const secondaryServerUrl = process.env.STAGING_API_URL;
+
 // Swagger definition
 const swaggerDefinition = {
   openapi: '3.0.0',
   info: {
-    title: 'Fusion E-Commerce Backend APIs',
+    title: 'Tekado Backend APIs',
     version: '1.1.0',
     description:
-      'API documentation for the Fusion E-Commerce backend server. This documentation provides detailed information on all available endpoints for managing products, users, authentication, and more.',
-    termsOfService: 'https://mern-stack-ecommerce-app-nine.vercel.app',
+      'API documentation for the Tekado backend server. This documentation provides detailed information on all available endpoints for managing products, users, authentication, and more.',
+    termsOfService: termsOfServiceUrl,
     contact: {
-      name: 'Fusion E-Commerce Website',
-      url: 'https://mern-stack-ecommerce-app-nine.vercel.app',
-      email: 'hoangson091104@gmail.com',
+      name: 'Tekado',
+      url: contactUrl,
+      email: contactEmail,
     },
     license: {
       name: 'MIT License',
@@ -21,17 +27,17 @@ const swaggerDefinition = {
   },
   servers: [
     {
-      url: 'http://localhost:8000',
-      description: 'Development server',
+      url: primaryServerUrl,
+      description: process.env.PUBLIC_API_URL ? 'Production server' : 'Local development',
     },
-    {
-      url: 'https://fusion-electronics-api.vercel.app',
-      description: 'Production server',
-    },
-    {
-      url: 'https://mern-stack-ecommerce-app-h5wb.onrender.com',
-      description: 'Production (backup) server',
-    },
+    ...(secondaryServerUrl
+      ? [
+          {
+            url: secondaryServerUrl,
+            description: 'Staging server',
+          },
+        ]
+      : []),
   ],
   components: {
     securitySchemes: {
@@ -59,7 +65,7 @@ const swaggerDefinition = {
           description: 'Noise-cancelling wireless headphones with long battery life.',
           price: 99.99,
           category: 'Electronics',
-          brand: 'Fusion',
+          brand: 'Tekado',
           stock: 150,
           rating: 4.7,
           numReviews: 89,
@@ -126,7 +132,7 @@ function setupSwaggerUi(app) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Fusion E-Commerce API Docs</title>
+  <title>Tekado API Docs</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Favicons -->
   <link rel="icon" href="https://unpkg.com/swagger-ui-dist/favicon-32x32.png" sizes="32x32" />

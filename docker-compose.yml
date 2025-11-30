@@ -34,7 +34,7 @@ services:
       PORT: 8000
       # add here any other env vars your app needs (JWT_SECRET, SMTP, etc.)
     ports:
-      - "8000:8000"  #to reach the API from your machine.
+      - "80:8000"  # EC2 port 80 → container port 8000
     networks:
       - tekado-net
 
