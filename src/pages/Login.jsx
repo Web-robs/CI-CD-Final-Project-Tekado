@@ -61,7 +61,7 @@ function Login() {
         </Stack>
 
         {error && (
-          <Typography variant="body2" color="error" sx={{ display: 'none' }}>
+          <Typography variant="body2" color="error" sx={{ mb: 1 }}>
             {error}
           </Typography>
         )}
