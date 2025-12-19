@@ -31,14 +31,38 @@ jobs:
         # if you actually have Jest tests and want pipeline to fail on errors,
         # change the line above to just: run: npm test
 
-  build-and-push:
-    name: Build & Push Docker image
+  build:
+    name: Build Docker image (no push)
     runs-on: ubuntu-latest
-    needs: test   # only run if test job completes
+    needs: test
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tekado-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  push:
+    name: Push Docker image
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -52,4 +76,5 @@ jobs:
           context: ./backend
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/tekado-backend:latest
-
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

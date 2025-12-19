@@ -4,6 +4,10 @@ import Cards from 'react-credit-cards-2';
 import 'react-credit-cards-2/dist/es/styles-compiled.css';
 import { useNotifier } from '../context/NotificationProvider';
 
+const MIN_CARD_LENGTH = 12;
+const MAX_CARD_LENGTH = 19;
+const SKIP_CARD_VALIDATION = process.env.REACT_APP_SKIP_CARD_VALIDATION !== 'false';
+
 // Luhn algorithm for credit card validation
 const luhnCheck = cardNumber => {
   const digits = cardNumber.replace(/\D/g, '');
@@ -43,11 +47,12 @@ const getCardType = cardNumber => {
 const getCardLength = cardType => {
   if (cardType === 'American Express') return 15;
   if (cardType === 'Diners Club') return 14;
-  return 16;
+  if (['Visa', 'Mastercard', 'Discover', 'JCB'].includes(cardType)) return 16;
+  return null; // unknown/other cards may vary (12-19)
 };
 
 const formatCardNumber = (cardNumber, cardType) => {
-  const digits = cardNumber.replace(/\D/g, '');
+  const digits = cardNumber.replace(/\D/g, '').slice(0, MAX_CARD_LENGTH);
   if (!digits) return '';
 
   let groupSizes;
@@ -59,7 +64,7 @@ const formatCardNumber = (cardNumber, cardType) => {
       groupSizes = [4, 6, 4];
       break;
     default:
-      groupSizes = [4, 4, 4, 4];
+      groupSizes = [4, 4, 4, 4, 3]; // supports up to 19 digits
       break;
   }
 
@@ -155,22 +160,19 @@ function CheckoutForm({ onSubmit, submitting = false }) {
 
     switch (name) {
       case 'cardNumber': {
-        const digitsOnly = value.replace(/\D/g, '');
+        const digitsOnly = value.replace(/\D/g, '').slice(0, MAX_CARD_LENGTH);
         const numberCardType = getCardType(digitsOnly);
         const expectedLength = getCardLength(numberCardType);
+        const withinRange = digitsOnly.length >= MIN_CARD_LENGTH && digitsOnly.length <= MAX_CARD_LENGTH;
+        const meetsKnownLength = expectedLength ? digitsOnly.length === expectedLength : withinRange;
 
-        let trimmed = digitsOnly;
-        if (trimmed.length > expectedLength) {
-          trimmed = trimmed.slice(0, expectedLength);
-        }
-
-        if (trimmed.length === expectedLength) {
-          newValidationErrors.cardNumber = luhnCheck(trimmed) ? '' : 'Invalid card number';
+        if (digitsOnly.length >= MIN_CARD_LENGTH && meetsKnownLength) {
+          newValidationErrors.cardNumber = luhnCheck(digitsOnly) ? '' : 'Invalid card number';
         } else {
           newValidationErrors.cardNumber = '';
         }
 
-        sanitizedValue = formatCardNumber(trimmed, numberCardType);
+        sanitizedValue = formatCardNumber(digitsOnly, numberCardType);
         break;
       }
       case 'expiry':
@@ -226,26 +228,35 @@ function CheckoutForm({ onSubmit, submitting = false }) {
     // Validate all fields before submission
     const errors = {};
 
-    // Card number validation
     const digitsOnlyCardNumber = formData.cardNumber.replace(/\D/g, '');
     const submissionCardType = getCardType(digitsOnlyCardNumber);
     const expectedLength = getCardLength(submissionCardType);
-    if (digitsOnlyCardNumber.length !== expectedLength) {
-      errors.cardNumber = `Card number must be ${expectedLength} digits`;
-    } else if (!luhnCheck(digitsOnlyCardNumber)) {
-      errors.cardNumber = 'Invalid card number';
-    }
 
-    // Expiry validation
-    const expiryValidation = validateExpiry(formData.expiry);
-    if (!expiryValidation.valid) {
-      errors.expiry = expiryValidation.message;
-    }
+    if (!SKIP_CARD_VALIDATION) {
+      // Card number validation
+      const lengthIsValid = expectedLength
+        ? digitsOnlyCardNumber.length === expectedLength
+        : digitsOnlyCardNumber.length >= MIN_CARD_LENGTH && digitsOnlyCardNumber.length <= MAX_CARD_LENGTH;
 
-    // CVC validation
-    const requiredCvcLength = submissionCardType === 'American Express' ? 4 : 3;
-    if (formData.cvc.length !== requiredCvcLength) {
-      errors.cvc = `CVC must be ${requiredCvcLength} digits`;
+      if (!lengthIsValid) {
+        errors.cardNumber = expectedLength
+          ? `Card number must be ${expectedLength} digits`
+          : `Card number must be between ${MIN_CARD_LENGTH} and ${MAX_CARD_LENGTH} digits`;
+      } else if (!luhnCheck(digitsOnlyCardNumber)) {
+        errors.cardNumber = 'Invalid card number';
+      }
+
+      // Expiry validation
+      const expiryValidation = validateExpiry(formData.expiry);
+      if (!expiryValidation.valid) {
+        errors.expiry = expiryValidation.message;
+      }
+
+      // CVC validation
+      const requiredCvcLength = submissionCardType === 'American Express' ? 4 : 3;
+      if (formData.cvc.length !== requiredCvcLength) {
+        errors.cvc = `CVC must be ${requiredCvcLength} digits`;
+      }
     }
 
     // Email validation

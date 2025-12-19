@@ -40,18 +40,17 @@ function Checkout({ cartItems = [], onOrderComplete }) {
   });
 
   const handleSubmit = async formData => {
-    if (!selectedItems.size) {
-      notify({ severity: 'warning', message: 'Select at least one item before checking out.' });
-      return;
-    }
-
     const itemsToPurchase = cartItems.filter(item => {
       const id = item._id || item.id;
       return id && selectedItems.has(id);
     });
 
-    if (!itemsToPurchase.length) {
-      notify({ severity: 'warning', message: 'Selected items are unavailable. Please refresh your cart.' });
+    if (!selectedItems.size || !itemsToPurchase.length) {
+      const message = !selectedItems.size
+        ? 'Select at least one item before checking out.'
+        : 'Selected items are unavailable. Please refresh your cart.';
+      setErrorMessage(message);
+      notify({ severity: 'warning', message });
       return;
     }
 
@@ -105,7 +104,10 @@ function Checkout({ cartItems = [], onOrderComplete }) {
     } catch (error) {
       console.error('Error creating order:', error);
       setLoading(false);
-      const message = error?.response?.data?.error || 'Something went wrong while placing your order.';
+      const apiBase = apiClient?.defaults?.baseURL;
+      const message =
+        error?.response?.data?.error ||
+        (error?.code === 'ERR_NETWORK' && apiBase ? `Cannot reach API at ${apiBase}` : 'Something went wrong while placing your order.');
       setErrorMessage(message);
       notify({ severity: 'error', message });
     }
@@ -216,7 +218,7 @@ function Checkout({ cartItems = [], onOrderComplete }) {
           <>
             {loading && <CircularProgress sx={{ mb: 3 }} />}
             {errorMessage && (
-              <Typography color="error" sx={{ display: 'none' }}>
+              <Typography color="error" sx={{ mb: 2 }}>
                 {errorMessage}
               </Typography>
             )}

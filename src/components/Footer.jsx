@@ -31,10 +31,10 @@ const helpLinks = [
 ];
 
 const socialLinks = [
-  { icon: <GitHubIcon />, label: 'GitHub', href: 'https://github.com/hoangsonww' },
-  { icon: <LinkedInIcon />, label: 'LinkedIn', href: 'https://www.linkedin.com/in/hoangsonw/' },
-  { icon: <LanguageIcon />, label: 'Portfolio', href: 'https://sonnguyenhoang.com/' },
-  { icon: <EmailIcon />, label: 'Email', href: 'mailto:hoangson091104@gmail.com' },
+  { icon: <GitHubIcon />, label: 'GitHub', href: 'https://github.com/Web-robs' },
+  { icon: <LinkedInIcon />, label: 'LinkedIn', href: 'https://www.linkedin.com/in/robinyaghi/' },
+  { icon: <LanguageIcon />, label: 'Portfolio', href: 'http://robinyaghi.info/' },
+  { icon: <EmailIcon />, label: 'Email', href: '' },
 ];
 
 const policyLinks = [

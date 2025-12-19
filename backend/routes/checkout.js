@@ -5,6 +5,9 @@ const { ORDER_STATUS_FLOW, ensureInitialStatus } = require('../utils/orderStatus
 
 const router = express.Router();
 
+// Default: skip card validation for demo/dev; set SKIP_CARD_VALIDATION=false to enforce strict checks
+const SKIP_CARD_VALIDATION = process.env.SKIP_CARD_VALIDATION !== 'false';
+
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function generateOrderNumber() {
@@ -152,20 +155,22 @@ router.post('/create-order', async (req, res) => {
     const sanitizedCvc = String(cvc).trim();
     const trimmedCardName = String(cardName).trim();
 
-    if (!trimmedCardName) {
-      return res.status(400).json({ error: 'Name on card is required.' });
-    }
+    if (!SKIP_CARD_VALIDATION) {
+      if (!trimmedCardName) {
+        return res.status(400).json({ error: 'Name on card is required.' });
+      }
 
-    if (!/^\d{12,16}$/.test(sanitizedCardNumber)) {
-      return res.status(400).json({ error: 'Invalid card number' });
-    }
+      if (!/^\d{12,19}$/.test(sanitizedCardNumber)) {
+        return res.status(400).json({ error: 'Invalid card number' });
+      }
 
-    if (!/^(0[1-9]|1[0-2])\/(?:\d{2}|\d{4})$/.test(sanitizedExpiry)) {
-      return res.status(400).json({ error: 'Invalid expiry date' });
-    }
+      if (!/^(0[1-9]|1[0-2])\/(?:\d{2}|\d{4})$/.test(sanitizedExpiry)) {
+        return res.status(400).json({ error: 'Invalid expiry date' });
+      }
 
-    if (!/^\d{3,4}$/.test(sanitizedCvc)) {
-      return res.status(400).json({ error: 'Invalid CVC' });
+      if (!/^\d{3,4}$/.test(sanitizedCvc)) {
+        return res.status(400).json({ error: 'Invalid CVC' });
+      }
     }
 
     const normalizedItems = [];
