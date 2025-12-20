@@ -1,27 +1,15 @@
-# Node dependencies
 node_modules
 npm-debug.log
-yarn.lock
-pnpm-lock.yaml
-
-# Environment & secrets
+yarn-error.log
+*.log
 .env
-.env.local
-.env.*.local
-
-# Build artifacts
-dist
-build
-
-# Docker stuff
-Dockerfile
-docker-compose.yml
-
-# Git & editor
+.env.*
+.DS_Store
 .git
-.gitignore
 .vscode
-.idea
-*.swp
-*.swo
-
+coverage
+build
+dist
+faiss_stores
+Dockerfile
+Dockefile

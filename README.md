@@ -109,6 +109,7 @@ kubectl apply -n tekado -f kubernetes/postgres-service.yaml
 kubectl apply -n tekado -f kubernetes/backend-deployment.yaml
 kubectl apply -n tekado -f kubernetes/backend-service.yaml
 ```
+> Make sure the image in `kubernetes/backend-deployment.yaml` uses the same registry/tag you build and push (e.g., `${DOCKERHUB_USERNAME}/tekado-backend:latest`).
 
 Access backend (port-forward):
 ```bash
