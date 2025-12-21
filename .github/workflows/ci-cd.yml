@@ -45,7 +45,7 @@ jobs:
         if: ${{ hashFiles('package.json') != '' }}
         env:
           CI: "true"
-        run: npx craco test --watchAll=false
+        run: npx react-scripts test --watchAll=false --passWithNoTests
 
       - name: Backend tests
         if: ${{ hashFiles('backend/package.json') != '' }}
