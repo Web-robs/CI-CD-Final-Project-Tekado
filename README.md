@@ -144,8 +144,8 @@ docker compose up --build
 ```
 
 Verify:
-- Frontend: `http://localhost:3000`
-- Backend health: `http://localhost:8000/health`
+- Frontend: `http://localhost:3001`
+- Backend health: `http://localhost:8001/health`
 
 ### CI/CD (how to trigger)
 - Pull request to `main`/`master` → runs **Test + Build** (no push).

@@ -35,7 +35,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "${BACKEND_HOST_PORT:-8001}:8000"
     networks:
       - app-net
     healthcheck:
@@ -56,7 +56,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "3000:80"
+      - "${FRONTEND_HOST_PORT:-3001}:80"
     networks:
       - app-net
     healthcheck:
@@ -72,4 +72,3 @@ volumes:
 networks:
   app-net:
     driver: bridge
-
