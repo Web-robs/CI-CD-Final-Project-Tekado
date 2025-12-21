@@ -10,10 +10,18 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-cd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [frontend, backend]
     steps:
       - uses: actions/checkout@v4
 
@@ -26,23 +34,23 @@ jobs:
             backend/package-lock.json
 
       - name: Frontend install
-        if: ${{ hashFiles('package-lock.json') != '' && hashFiles('package.json') != '' }}
-        run: npm ci --workspaces=false
+        if: ${{ matrix.component == 'frontend' && hashFiles('package-lock.json') != '' && hashFiles('package.json') != '' }}
+        run: npm ci --workspaces=false --prefer-offline --no-audit --no-fund
 
       - name: Backend install
-        if: ${{ hashFiles('backend/package-lock.json') != '' && hashFiles('backend/package.json') != '' }}
-        run: npm ci --prefix backend
+        if: ${{ matrix.component == 'backend' && hashFiles('backend/package-lock.json') != '' && hashFiles('backend/package.json') != '' }}
+        run: npm ci --prefix backend --prefer-offline --no-audit --no-fund
 
       - name: Backend prisma generate
         # prisma.config.ts requires DATABASE_URL even for `prisma generate`
-        if: ${{ hashFiles('backend/prisma/schema.prisma') != '' }}
+        if: ${{ matrix.component == 'backend' && hashFiles('backend/prisma/schema.prisma') != '' }}
         working-directory: backend
         env:
           DATABASE_URL: postgresql://user:pass@localhost:5432/db?schema=public
         run: npx --no-install prisma generate
 
       - name: Frontend tests
-        if: ${{ hashFiles('package.json') != '' }}
+        if: ${{ matrix.component == 'frontend' && hashFiles('package.json') != '' }}
         env:
           CI: "true"
         run: >
@@ -55,7 +63,7 @@ jobs:
           src/tests/OrderSuccess.test.js
 
       - name: Backend tests
-        if: ${{ hashFiles('backend/package.json') != '' }}
+        if: ${{ matrix.component == 'backend' && hashFiles('backend/package.json') != '' }}
         working-directory: backend
         env:
           CI: "true"
@@ -81,6 +89,8 @@ jobs:
           file: ./backend/Dockerfile
           push: false
           tags: tekado-backend:ci
+          provenance: false
+          sbom: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -93,6 +103,8 @@ jobs:
           build-args: |
             REACT_APP_API_BASE_URL=/api
           tags: tekado-frontend:ci
+          provenance: false
+          sbom: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -145,6 +157,8 @@ jobs:
           push: true
           tags: ${{ steps.meta_backend.outputs.tags }}
           labels: ${{ steps.meta_backend.outputs.labels }}
+          provenance: false
+          sbom: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -159,5 +173,7 @@ jobs:
             REACT_APP_API_BASE_URL=/api
           tags: ${{ steps.meta_frontend.outputs.tags }}
           labels: ${{ steps.meta_frontend.outputs.labels }}
+          provenance: false
+          sbom: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
