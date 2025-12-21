@@ -16,8 +16,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
-    networks:
-      - app-net
 
   backend:
     build:
@@ -49,7 +47,6 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        # Served via nginx; /api is proxied to the backend service in frontend/nginx.conf.
         REACT_APP_API_BASE_URL: /api
     restart: unless-stopped
     depends_on:
@@ -72,4 +69,3 @@ volumes:
 networks:
   app-net:
     driver: bridge
-

@@ -2,6 +2,7 @@ const express = require('express');
 const { randomInt } = require('crypto');
 const prisma = require('../prismaClient');
 const { ORDER_STATUS_FLOW, ensureInitialStatus } = require('../utils/orderStatus');
+const optionalAuth = require('../middleware/optionalAuth');
 
 const router = express.Router();
 
@@ -130,7 +131,7 @@ async function generateOrderNumber() {
  *                   type: string
  *                   description: Description of the server error.
  */
-router.post('/create-order', async (req, res) => {
+router.post('/create-order', optionalAuth, async (req, res) => {
   try {
     const { items, name, email, shippingAddress, cardNumber, cardName, expiry, cvc } = req.body;
 
@@ -234,6 +235,11 @@ router.post('/create-order', async (req, res) => {
         create: ensureInitialStatus({ statusHistory: [], statusIndex: 0 }).statusHistory,
       },
     };
+
+    const userId = Number(req.user?.id);
+    if (Number.isInteger(userId) && userId > 0) {
+      orderData.user = { connect: { id: userId } };
+    }
 
     const order = await prisma.order.create({
       data: orderData,

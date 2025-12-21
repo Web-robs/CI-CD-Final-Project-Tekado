@@ -267,6 +267,7 @@ function CheckoutForm({ onSubmit, submitting = false }) {
 
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
+      setErrorMessage('Please fix the highlighted fields and try again.');
       notify({ severity: 'error', message: 'Please fix validation errors before submitting' });
       return;
     }
@@ -406,7 +407,7 @@ function CheckoutForm({ onSubmit, submitting = false }) {
 
       {(loading || submitting) && <CircularProgress sx={{ mt: 2 }} />}
       {errorMessage && (
-        <Typography color="error" sx={{ display: 'none' }}>
+        <Typography color="error" sx={{ mt: 2 }}>
           {errorMessage}
         </Typography>
       )}

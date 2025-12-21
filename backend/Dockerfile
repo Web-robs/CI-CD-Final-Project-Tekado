@@ -1,33 +1,36 @@
-FROM node:18-slim
+FROM node:20-bookworm-slim AS deps
 
 WORKDIR /app
 
-# System deps needed for Prisma and native modules (e.g. faiss-node, bcrypt)
+# Install build tooling for native Node modules (e.g. faiss-node) in the deps stage only.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-      ca-certificates \
-      openssl \
-      python3 \
-      build-essential \
-      cmake \
- && rm -rf /var/lib/apt/lists/*
+  && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
-# Prisma CLI needs DATABASE_URL set at build time for codegen
-ENV DATABASE_URL="postgresql://tekado_user:tekado_pass@postgres:5432/tekado_db?schema=public"
-ENV NODE_ENV=production
-ENV PORT=8000
-
-COPY package*.json ./
-
-# Deterministic install based on lockfile, production deps only
+COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
-# Copy schema first (used by prisma generate) then the rest of the app
-COPY prisma ./prisma
+FROM node:20-bookworm-slim AS runner
+
+ENV NODE_ENV=production
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN npx prisma generate
+# Generate Prisma Client inside the image (required at runtime).
+# prisma.config.ts requires DATABASE_URL to be set even for generate; a dummy value is sufficient here.
+RUN DATABASE_URL=postgresql://user:pass@localhost:5432/db?schema=public /app/node_modules/.bin/prisma generate
 
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+RUN chmod +x /usr/local/bin/docker-entrypoint
+
+USER node
 EXPOSE 8000
 
-CMD ["npm", "start"]
+ENTRYPOINT ["docker-entrypoint"]
+CMD ["node", "index.js"]

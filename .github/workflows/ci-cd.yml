@@ -1,80 +1,149 @@
-name: Tekado CI/CD
+name: CI/CD
 
 on:
-  push:
-    branches: ["main"]
   pull_request:
-    branches: ["main"]
+    branches: [main, master]
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+
+permissions:
+  contents: read
 
 jobs:
   test:
-    name: Test backend
+    name: Test
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
 
-      - name: Install dependencies
-        working-directory: ./backend
-        run: npm install
+      - name: Frontend install
+        if: ${{ hashFiles('package-lock.json') != '' && hashFiles('package.json') != '' }}
+        run: npm ci --workspaces=false
 
-      - name: Run tests
-        working-directory: ./backend
-        run: |
-          npm test || echo "Tests failed or not present, continuing for demo"
-        # if you actually have Jest tests and want pipeline to fail on errors,
-        # change the line above to just: run: npm test
+      - name: Backend install
+        if: ${{ hashFiles('backend/package-lock.json') != '' && hashFiles('backend/package.json') != '' }}
+        run: npm ci --prefix backend
+
+      - name: Backend prisma generate
+        # prisma.config.ts requires DATABASE_URL even for `prisma generate`
+        if: ${{ hashFiles('backend/prisma/schema.prisma') != '' }}
+        env:
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db?schema=public
+        run: npm --prefix backend exec prisma generate
+
+      - name: Frontend tests
+        if: ${{ hashFiles('package.json') != '' }}
+        env:
+          CI: "true"
+        run: npm test --if-present
+
+      - name: Backend tests
+        if: ${{ hashFiles('backend/package.json') != '' }}
+        env:
+          CI: "true"
+          JWT_SECRET: testsecret
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db?schema=public
+        run: npm --prefix backend test --if-present
 
   build:
-    name: Build Docker image (no push)
+    name: Build Images
     runs-on: ubuntu-latest
     needs: test
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Build image (no push)
+      # Build only (no registry login, no push). This runs on PRs and pushes.
+      - name: Build backend image
         uses: docker/build-push-action@v6
         with:
           context: ./backend
+          file: ./backend/Dockerfile
           push: false
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tekado-backend:latest
+          tags: tekado-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./frontend/Dockerfile
+          push: false
+          build-args: |
+            REACT_APP_API_BASE_URL=/api
+          tags: tekado-frontend:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   push:
-    name: Push Docker image
+    name: Push Images (Docker Hub)
     runs-on: ubuntu-latest
     needs: build
-
+    if: >
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push backend image
+      - name: Docker meta (backend)
+        id: meta_backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/tekado-backend
+          tags: |
+            type=sha,format=short
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Docker meta (frontend)
+        id: meta_frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/tekado-frontend
+          tags: |
+            type=sha,format=short
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build & push backend
         uses: docker/build-push-action@v6
         with:
           context: ./backend
+          file: ./backend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tekado-backend:latest
+          tags: ${{ steps.meta_backend.outputs.tags }}
+          labels: ${{ steps.meta_backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./frontend/Dockerfile
+          push: true
+          build-args: |
+            REACT_APP_API_BASE_URL=/api
+          tags: ${{ steps.meta_frontend.outputs.tags }}
+          labels: ${{ steps.meta_frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

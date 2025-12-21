@@ -4,6 +4,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const client = require('prom-client');
+const prisma = require('./prismaClient');
 const seedDB = require('./seed/productSeeds');
 const syncPinecone = require('./sync/syncPinecone');
 const productRoutes = require('./routes/products');
@@ -42,7 +43,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Simple healthcheck endpoint for Kubernetes probes
+// Simple healthcheck endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
@@ -75,6 +76,9 @@ app.use('/api/auth', authRoutes);
 
 async function bootstrap() {
   try {
+    // Ensure DB is reachable before serving routes that depend on it.
+    await prisma.$connect();
+
     // 1. Seed the database (only when necessary)
     const skipSeed = process.env.SKIP_SEED_ON_START === 'true';
     if (!skipSeed) {

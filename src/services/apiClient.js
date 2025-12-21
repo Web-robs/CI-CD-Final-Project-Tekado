@@ -7,6 +7,21 @@ export const apiClient = axios.create({
   timeout: 10000,
 });
 
+apiClient.interceptors.request.use(config => {
+  if (typeof window === 'undefined') return config;
+  const token = localStorage.getItem('MERNEcommerceToken');
+  if (!token) return config;
+
+  config.headers = config.headers || {};
+  if (!config.headers['x-auth-token']) {
+    config.headers['x-auth-token'] = token;
+  }
+  if (!config.headers.Authorization) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export async function withRetry(request, { retries = 2, delay = 400 } = {}) {
   let lastError;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
