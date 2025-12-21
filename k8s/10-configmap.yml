@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tekado-config
+  namespace: tekado
+data:
+  BACKEND_PORT: "8000"
+  SKIP_SEED_ON_START: "true"
+  SKIP_PINECONE_SYNC: "true"
+  READYZ_TIMEOUT_MS: "2000"
+

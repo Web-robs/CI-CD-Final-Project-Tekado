@@ -48,6 +48,24 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+// Kubernetes probes
+app.get('/healthz', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+app.get('/readyz', async (_req, res) => {
+  try {
+    const timeoutMs = Number(process.env.READYZ_TIMEOUT_MS || 2000);
+    await Promise.race([
+      prisma.$queryRaw`SELECT 1`,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('readyz timeout')), timeoutMs)),
+    ]);
+    res.status(200).json({ status: 'ready' });
+  } catch (_err) {
+    res.status(503).json({ status: 'not_ready' });
+  }
+});
+
 // Redirect root to /api-docs
 app.get('/', (req, res) => {
   res.redirect('/api-docs');

@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: tekado
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      initContainers:
+        - name: prisma-migrate
+          image: ${DOCKERHUB_USERNAME}/tekado-backend:latest
+          imagePullPolicy: Always
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: tekado-secrets
+                  key: DATABASE_URL
+          command: ["sh", "-lc", "/app/node_modules/.bin/prisma migrate deploy"]
+      containers:
+        - name: backend
+          image: ${DOCKERHUB_USERNAME}/tekado-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: tekado-config
+                  key: BACKEND_PORT
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: tekado-secrets
+                  key: DATABASE_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: tekado-secrets
+                  key: JWT_SECRET
+            - name: SKIP_SEED_ON_START
+              valueFrom:
+                configMapKeyRef:
+                  name: tekado-config
+                  key: SKIP_SEED_ON_START
+            - name: SKIP_PINECONE_SYNC
+              valueFrom:
+                configMapKeyRef:
+                  name: tekado-config
+                  key: SKIP_PINECONE_SYNC
+            - name: READYZ_TIMEOUT_MS
+              valueFrom:
+                configMapKeyRef:
+                  name: tekado-config
+                  key: READYZ_TIMEOUT_MS
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+
