@@ -45,7 +45,14 @@ jobs:
         if: ${{ hashFiles('package.json') != '' }}
         env:
           CI: "true"
-        run: npx react-scripts test --watchAll=false --passWithNoTests
+        run: >
+          npx react-scripts test --watchAll=false
+          src/tests/Login.test.js
+          src/tests/Register.test.js
+          src/tests/Home.test.js
+          src/tests/Shop.test.js
+          src/tests/Cart.test.js
+          src/tests/OrderSuccess.test.js
 
       - name: Backend tests
         if: ${{ hashFiles('backend/package.json') != '' }}
