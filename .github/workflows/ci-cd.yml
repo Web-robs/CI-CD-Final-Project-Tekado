@@ -14,6 +14,11 @@ concurrency:
   group: ci-cd-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Speed note: multi-arch pushes are the slowest part of the pipeline.
+# Default to arm64-only (works for Apple Silicon + kind arm64). If you need both, set to "linux/amd64,linux/arm64".
+env:
+  PUSH_PLATFORMS: linux/arm64
+
 jobs:
   test:
     name: Test
@@ -153,7 +158,7 @@ jobs:
         with:
           context: ./backend
           file: ./backend/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.PUSH_PLATFORMS }}
           push: true
           tags: ${{ steps.meta_backend.outputs.tags }}
           labels: ${{ steps.meta_backend.outputs.labels }}
@@ -167,7 +172,7 @@ jobs:
         with:
           context: .
           file: ./frontend/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.PUSH_PLATFORMS }}
           push: true
           build-args: |
             REACT_APP_API_BASE_URL=/api
