@@ -36,9 +36,10 @@ jobs:
       - name: Backend prisma generate
         # prisma.config.ts requires DATABASE_URL even for `prisma generate`
         if: ${{ hashFiles('backend/prisma/schema.prisma') != '' }}
+        working-directory: backend
         env:
           DATABASE_URL: postgresql://user:pass@localhost:5432/db?schema=public
-        run: npm --prefix backend exec prisma generate
+        run: npx --no-install prisma generate
 
       - name: Frontend tests
         if: ${{ hashFiles('package.json') != '' }}
